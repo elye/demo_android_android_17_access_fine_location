@@ -31,6 +31,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.locationbutton.compose.LocationButton
+import androidx.core.locationbutton.compose.LocationButtonTextType
 import java.util.Locale
 
 private enum class LocationAccess {
@@ -96,24 +98,16 @@ fun LocationScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    fun requestAccess(access: LocationAccess) {
+    fun requestCoarseLocation() {
         val coarseGranted = hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
         val fineGranted = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-        if (coarseGranted && (access == LocationAccess.COARSE || fineGranted)) {
-            fetchLocation(access, finePermissionGranted = fineGranted)
+        if (coarseGranted) {
+            fetchLocation(LocationAccess.COARSE, finePermissionGranted = fineGranted)
             return
         }
 
-        pendingAccess = access
-        val permissions = if (access == LocationAccess.FINE) {
-            arrayOf(
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            )
-        } else {
-            arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-        permissionLauncher.launch(permissions)
+        pendingAccess = LocationAccess.COARSE
+        permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION))
     }
 
     DisposableEffect(locationProvider) {
@@ -139,7 +133,7 @@ fun LocationScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("Location access demo", style = MaterialTheme.typography.headlineMedium)
-        Text("Request a one-time device location and compare it with a destination.")
+        Text("Use approximate access or the location button for precise, session-based access.")
 
         OutlinedTextField(
             value = destinationInput,
@@ -153,19 +147,26 @@ fun LocationScreen(modifier: Modifier = Modifier) {
         )
 
         Button(
-            onClick = { requestAccess(LocationAccess.COARSE) },
+            onClick = { requestCoarseLocation() },
             modifier = Modifier.fillMaxWidth(),
             enabled = !isLoading
         ) {
             Text("ACCESS_COARSE_LOCATION")
         }
-        Button(
-            onClick = { requestAccess(LocationAccess.FINE) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
-        ) {
-            Text("ACCESS_FINE_LOCATION")
-        }
+        LocationButton(
+            onPermissionResult = { granted ->
+                if (granted && hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    fetchLocation(LocationAccess.FINE, finePermissionGranted = true)
+                } else {
+                    currentLocation = null
+                    statusMessage = "Precise location access was not granted."
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            textType = LocationButtonTextType.UsePreciseLocation
+        )
 
         Text(statusMessage, style = MaterialTheme.typography.bodyMedium)
 
