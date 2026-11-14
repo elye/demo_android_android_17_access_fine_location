@@ -2,103 +2,63 @@ package com.elyeproj.locationdetect
 
 import android.content.Context
 import android.location.Location
-import android.location.LocationListener
-import android.location.LocationManager
-import android.os.Build
-import android.os.Bundle
-import android.os.CancellationSignal
-import android.os.Handler
-import android.os.Looper
-import java.util.concurrent.Executor
+import com.google.android.gms.location.CurrentLocationRequest
+import com.google.android.gms.location.Granularity
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
+import java.util.concurrent.CancellationException
 
 class LocationProvider(context: Context) {
-    private val manager = context.applicationContext
-        .getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    private val handler = Handler(Looper.getMainLooper())
+    private val fusedLocationClient =
+        LocationServices.getFusedLocationProviderClient(context.applicationContext)
 
     fun requestCurrentLocation(
         useFineProvider: Boolean,
         onResult: (Result<Location>) -> Unit
     ): () -> Unit {
+        val cancellationTokenSource = CancellationTokenSource()
         var isFinished = false
-        var listener: LocationListener? = null
-        var cancellationSignal: CancellationSignal? = null
-        lateinit var timeout: Runnable
 
         fun finish(result: Result<Location>) {
             if (isFinished) return
             isFinished = true
-            handler.removeCallbacks(timeout)
-            listener?.let(manager::removeUpdates)
             onResult(result)
         }
 
-        timeout = Runnable {
-            finish(Result.failure(IllegalStateException("Timed out waiting for a location.")))
-        }
+        val request = CurrentLocationRequest.Builder()
+            .setPriority(
+                if (useFineProvider) Priority.PRIORITY_HIGH_ACCURACY
+                else Priority.PRIORITY_BALANCED_POWER_ACCURACY
+            )
+            .setGranularity(Granularity.GRANULARITY_PERMISSION_LEVEL)
+            .setMaxUpdateAgeMillis(0L)
+            .setDurationMillis(LOCATION_TIMEOUT_MILLIS)
+            .build()
 
-        val enabledProviders = try {
-            manager.getProviders(true)
-        } catch (exception: SecurityException) {
-            finish(Result.failure(exception))
-            return { }
-        }
-        val preferredProviders = if (useFineProvider) {
-            listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
-        } else {
-            listOf(LocationManager.NETWORK_PROVIDER)
-        }
-        val provider = preferredProviders.firstOrNull(enabledProviders::contains)
-        if (provider == null) {
-            finish(Result.failure(IllegalStateException("No location provider is enabled for this access level.")))
-            return { }
-        }
-
-        handler.postDelayed(timeout, LOCATION_TIMEOUT_MILLIS)
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val signal = CancellationSignal()
-                cancellationSignal = signal
-                manager.getCurrentLocation(
-                    provider,
-                    signal,
-                    Executor { command -> handler.post(command) }
-                ) { location ->
+            fusedLocationClient.getCurrentLocation(request, cancellationTokenSource.token)
+                .addOnSuccessListener { location ->
                     if (location == null) {
-                        finish(Result.failure(IllegalStateException("The device could not determine a location.")))
+                        finish(Result.failure(IllegalStateException("No fresh location was available within 30 seconds.")))
                     } else {
                         finish(Result.success(location))
                     }
                 }
-            } else {
-                val locationListener = object : LocationListener {
-                    override fun onLocationChanged(location: Location) {
-                        finish(Result.success(location))
-                    }
-
-                    @Deprecated("Deprecated in Android")
-                    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
-
-                    override fun onProviderEnabled(provider: String) = Unit
-
-                    override fun onProviderDisabled(provider: String) = Unit
+                .addOnFailureListener { exception ->
+                    finish(Result.failure(exception))
                 }
-                listener = locationListener
-                @Suppress("DEPRECATION")
-                manager.requestSingleUpdate(provider, locationListener, Looper.getMainLooper())
-            }
+                .addOnCanceledListener {
+                    finish(Result.failure(CancellationException("Location request was cancelled.")))
+                }
         } catch (exception: SecurityException) {
-            finish(Result.failure(exception))
-        } catch (exception: IllegalArgumentException) {
             finish(Result.failure(exception))
         }
 
         return {
             if (!isFinished) {
                 isFinished = true
-                handler.removeCallbacks(timeout)
-                listener?.let(manager::removeUpdates)
-                cancellationSignal?.cancel()
+                cancellationTokenSource.cancel()
             }
         }
     }
