@@ -57,9 +57,7 @@ fun LocationScreen(modifier: Modifier = Modifier) {
         currentLocation = null
         isLoading = true
         statusMessage = "Getting device location…"
-        cancelLocationRequest = locationProvider.requestCurrentLocation(
-            useFineProvider = access == LocationAccess.FINE && finePermissionGranted
-        ) { result ->
+        cancelLocationRequest = locationProvider.requestCurrentLocation { result ->
             isLoading = false
             cancelLocationRequest = null
             result.fold(
@@ -68,7 +66,9 @@ fun LocationScreen(modifier: Modifier = Modifier) {
                     statusMessage = when {
                         access == LocationAccess.FINE && !finePermissionGranted ->
                             "Approximate access only; precise location was not granted."
-                        access == LocationAccess.FINE -> "Fine location access granted."
+                        access == LocationAccess.COARSE && finePermissionGranted ->
+                            "Fine permission is already granted; Android may return a precise location."
+                        finePermissionGranted -> "Fine location access granted."
                         else -> "Coarse location access granted."
                     }
                 },
@@ -92,7 +92,7 @@ fun LocationScreen(modifier: Modifier = Modifier) {
             isLoading = false
             statusMessage = "Location permission was not granted."
         } else {
-            fetchLocation(access, finePermissionGranted = access == LocationAccess.FINE && fineGranted)
+            fetchLocation(access, finePermissionGranted = fineGranted)
         }
     }
 
@@ -100,7 +100,7 @@ fun LocationScreen(modifier: Modifier = Modifier) {
         val coarseGranted = hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
         val fineGranted = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
         if (coarseGranted && (access == LocationAccess.COARSE || fineGranted)) {
-            fetchLocation(access, finePermissionGranted = access == LocationAccess.FINE && fineGranted)
+            fetchLocation(access, finePermissionGranted = fineGranted)
             return
         }
 

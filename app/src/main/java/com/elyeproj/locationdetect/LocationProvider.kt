@@ -14,7 +14,6 @@ class LocationProvider(context: Context) {
         LocationServices.getFusedLocationProviderClient(context.applicationContext)
 
     fun requestCurrentLocation(
-        useFineProvider: Boolean,
         onResult: (Result<Location>) -> Unit
     ): () -> Unit {
         val cancellationTokenSource = CancellationTokenSource()
@@ -27,10 +26,7 @@ class LocationProvider(context: Context) {
         }
 
         val request = CurrentLocationRequest.Builder()
-            .setPriority(
-                if (useFineProvider) Priority.PRIORITY_HIGH_ACCURACY
-                else Priority.PRIORITY_BALANCED_POWER_ACCURACY
-            )
+            .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
             .setGranularity(Granularity.GRANULARITY_PERMISSION_LEVEL)
             .setMaxUpdateAgeMillis(0L)
             .setDurationMillis(LOCATION_TIMEOUT_MILLIS)
