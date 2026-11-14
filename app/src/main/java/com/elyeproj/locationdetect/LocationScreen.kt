@@ -121,7 +121,7 @@ fun LocationScreen(modifier: Modifier = Modifier) {
     }
 
     val destination = remember(destinationInput) {
-        DistanceCalculator.parseLongitudeLatitude(destinationInput)
+        DistanceCalculator.parseLatitudeLongitude(destinationInput)
     }
     val distanceKilometers = if (currentLocation != null && destination != null) {
         DistanceCalculator.distanceKilometers(
@@ -145,9 +145,9 @@ fun LocationScreen(modifier: Modifier = Modifier) {
             value = destinationInput,
             onValueChange = { destinationInput = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Destination (longitude, latitude)") },
-            placeholder = { Text("-122.4194, 37.7749") },
-            supportingText = { Text("Enter longitude first, then latitude.") },
+            label = { Text("Destination (latitude, longitude)") },
+            placeholder = { Text("37.7749, -122.4194") },
+            supportingText = { Text("Enter latitude first, then longitude.") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)
         )
@@ -176,8 +176,8 @@ fun LocationScreen(modifier: Modifier = Modifier) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text("Location result", style = MaterialTheme.typography.titleMedium)
-                    Text("Longitude: ${location.longitude.formatCoordinate()}")
                     Text("Latitude: ${location.latitude.formatCoordinate()}")
+                    Text("Longitude: ${location.longitude.formatCoordinate()}")
                     if (location.accuracy > 0f) {
                         Text("Reported accuracy: ± ${location.accuracy.formatAccuracy()} m")
                     }
@@ -186,7 +186,7 @@ fun LocationScreen(modifier: Modifier = Modifier) {
                             Text("Enter destination coordinates to calculate distance.")
                         destination == null ->
                             Text(
-                                "Use valid longitude, latitude values, e.g. -122.4194, 37.7749.",
+                                "Use valid latitude, longitude values, e.g. 37.7749, -122.4194.",
                                 color = MaterialTheme.colorScheme.error
                             )
                         distanceKilometers != null ->

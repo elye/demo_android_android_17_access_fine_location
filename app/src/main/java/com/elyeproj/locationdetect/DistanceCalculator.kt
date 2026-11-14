@@ -8,12 +8,12 @@ import kotlin.math.sqrt
 data class Coordinates(val latitude: Double, val longitude: Double)
 
 object DistanceCalculator {
-    fun parseLongitudeLatitude(input: String): Coordinates? {
+    fun parseLatitudeLongitude(input: String): Coordinates? {
         val values = input.split(',')
         if (values.size != 2) return null
 
-        val longitude = values[0].trim().toDoubleOrNull() ?: return null
-        val latitude = values[1].trim().toDoubleOrNull() ?: return null
+        val latitude = values[0].trim().toDoubleOrNull() ?: return null
+        val longitude = values[1].trim().toDoubleOrNull() ?: return null
         if (!longitude.isFinite() || !latitude.isFinite()) return null
         if (longitude !in -180.0..180.0 || latitude !in -90.0..90.0) return null
 

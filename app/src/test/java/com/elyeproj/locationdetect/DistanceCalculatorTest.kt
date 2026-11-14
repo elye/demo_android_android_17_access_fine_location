@@ -6,19 +6,27 @@ import org.junit.Test
 
 class DistanceCalculatorTest {
     @Test
-    fun parsesLongitudeThenLatitude() {
+    fun parsesLatitudeThenLongitude() {
         assertEquals(
             Coordinates(latitude = 37.7749, longitude = -122.4194),
-            DistanceCalculator.parseLongitudeLatitude(" -122.4194, 37.7749 ")
+            DistanceCalculator.parseLatitudeLongitude(" 37.7749, -122.4194 ")
         )
     }
 
     @Test
     fun rejectsInvalidCoordinateInput() {
-        assertNull(DistanceCalculator.parseLongitudeLatitude("not coordinates"))
-        assertNull(DistanceCalculator.parseLongitudeLatitude("181, 0"))
-        assertNull(DistanceCalculator.parseLongitudeLatitude("0, -91"))
-        assertNull(DistanceCalculator.parseLongitudeLatitude("NaN, 0"))
+        assertNull(DistanceCalculator.parseLatitudeLongitude("not coordinates"))
+        assertNull(DistanceCalculator.parseLatitudeLongitude("91, 0"))
+        assertNull(DistanceCalculator.parseLatitudeLongitude("0, 181"))
+        assertNull(DistanceCalculator.parseLatitudeLongitude("NaN, 0"))
+    }
+
+    @Test
+    fun parsesTheAustralianCoordinateOrder() {
+        assertEquals(
+            Coordinates(latitude = -37.843128, longitude = 145.180627),
+            DistanceCalculator.parseLatitudeLongitude("-37.843128, 145.180627")
+        )
     }
 
     @Test
